@@ -1,0 +1,756 @@
+"""
+Traitbook - Personality Quiz App
+"""
+
+import json
+import os
+import sys
+import time
+
+DATA_FILE = "quiztraits_data.json"
+
+# COLOUR HELPERS
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+DIM    = "\033[2m"
+PURPLE = "\033[95m"
+CYAN   = "\033[96m"
+GREEN  = "\033[92m"
+YELLOW = "\033[93m"
+RED    = "\033[91m"
+BLUE   = "\033[94m"
+ORANGE = "\033[33m"
+WHITE  = "\033[97m"
+
+def c(text, colour): 
+    return f"{colour}{text}{RESET}"
+def bold(text):      
+    return f"{BOLD}{text}{RESET}"
+def dim(text):       
+    return f"{DIM}{text}{RESET}"
+
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def hr(char="─", width=56):
+    print(c(char * width, DIM))
+
+def pause(msg="Press Enter to continue..."):
+    input(c(f"\n{msg}", DIM))
+
+# QUIZ DATA
+QUIZZES = [
+    { # Quiz 1
+        "id": 1,
+        "title": "Are You an Introvert or Extrovert?",
+        "description": "This quiz will figure out if you are introverted or extroverted, answer truthfully to get best results",
+        "trait_name": "Energy type",
+        "emoji": "❀",
+        "questions": [
+            {
+                "text": "After a long day at work, what do you want to do the most:",
+                "options": [
+                    {"text": "Be alone and do your own thing by yourself",        "value": 1},
+                    {"text": "Go out with a small group of close friends",        "value": 3},
+                    {"text": "Go to a party to meet new people",                  "value": 5},
+                ],
+            },
+            {
+                "text": "At a party where you barely know anyone, you:",
+                "options": [
+                    {"text": "Stick to one corner and wait to be approached",     "value": 1},
+                    {"text": "Chat with a few people you find interesting",       "value": 3},
+                    {"text": "Be social and introduce yourself to everyone",  "value": 5},
+                ],
+            },
+            {
+                "text": "Your ideal weekend looks like:",
+                "options": [
+                    {"text": "A cozy day at home with a book or movie",           "value": 1},
+                    {"text": "A mix of alone time and catching up with friends",   "value": 3},
+                    {"text": "A packed schedule full of plans",            "value": 5},
+                ],
+            },
+            {
+                "text": "When you have a big decision to make, you:",
+                "options": [
+                    {"text": "Think it through alone in reflection",        "value": 1},
+                    {"text": "Weigh pros and cons, then talk to a trusted friend","value": 3},
+                    {"text": "Talk it out with multiple people",                  "value": 5},
+                ],
+            },
+            {
+                "text": "In a group project, your natural role is usually:",
+                "options": [
+                    {"text": "The quiet contributor who works independently",     "value": 1},
+                    {"text": "A key collaborator who bridges ideas",              "value": 3},
+                    {"text": "The organizer who gets everyone energized",         "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 2,
+        "title": "What would be an ideal place for you to live",
+        "description": "Find out what place would ideal for you to live in ",
+        "trait_name": "Living Style",
+        "emoji": "🏠",
+        "questions": [
+            {
+                "text": "When you are calm, where do you envision yourself?",
+                "options": [
+                    {"text": "Taking a chill drive",               "value": 1},
+                    {"text": "Watching a sunset",        "value": 3},
+                    {"text": "Near a big grass field",                       "value": 5},
+                ],
+            },
+            {
+                "text": "What is your preferred pace in life ",
+                "options": [
+                    {"text": "Fast, busy, and full of opportunities",                     "value": 1},
+                    {"text": "Balanced, calm with some activity",                       "value": 3},
+                    {"text": "low and peaceful, away from crowds",                           "value": 5},
+                ],
+            },
+            {
+                "text": "When reading a book, you prefer:",
+                "options": [
+                    {"text": "A sci-fi dystopian city",               "value": 1},
+                    {"text": "A romantic summer home",                       "value": 3},
+                    {"text": "Life on a farm",                    "value": 5},
+                ],
+            },
+            {
+                "text": "How do you like to get around?",
+                "options": [
+                    {"text": "Public transit,subways, city streets",             "value": 1},
+                    {"text": "Walking and local streets",               "value": 3},
+                    {"text": "Driving in quiet areas",   "value": 5},
+                ],
+            },
+            {
+                "text": "Your social life is:",
+                "options": [
+                    {"text": "Huge, meeting new people everyday",            "value": 1},
+                    {"text": "Mix of friends, casual socializing",          "value": 3},
+                    {"text": "Tiny, close knit group of friends",         "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 3,
+        "title": "What's Your Communication Style?",
+        "description": "Find out how you connect and express yourself with others",
+        "trait_name": "Communication Style",
+        "emoji": "💬",
+        "questions": [
+            {
+                "text": "In a heated debate, you usually:",
+                "options": [
+                    {"text": "Listen carefully before responding",                "value": 1},
+                    {"text": "Share your view while staying open",                "value": 3},
+                    {"text": "Jump in passionately with your perspective",        "value": 5},
+                ],
+            },
+            {
+                "text": "When giving feedback to someone, you:",
+                "options": [
+                    {"text": "Think long before speaking, choosing words carefully","value": 1},
+                    {"text": "Balance honesty with kindness",                     "value": 3},
+                    {"text": "Say exactly what you think, directly",              "value": 5},
+                ],
+            },
+            {
+                "text": "When a friend seems upset but says nothing, you:",
+                "options": [
+                    {"text": "Wait for them to bring it up in their own time",    "value": 1},
+                    {"text": "Gently check in and let them know you're there",   "value": 3},
+                    {"text": "Ask them straight away what's going on",            "value": 5},
+                ],
+            },
+            {
+                "text": "You prefer to communicate important news via:",
+                "options": [
+                    {"text": "A carefully written message or email",              "value": 1},
+                    {"text": "A quick call or voice note",                        "value": 3},
+                    {"text": "Face to face, always",                              "value": 5},
+                ],
+            },
+            {
+                "text": "In a meeting, you are most likely to:",
+                "options": [
+                    {"text": "Listen and take notes, speak only when certain",   "value": 1},
+                    {"text": "Contribute when you have something relevant",       "value": 3},
+                    {"text": "Drive the conversation and ask lots of questions",  "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 4,
+        "title": "What genre of tv show do you belong in?",
+        "description": "Romance, Comedy, and Drama, which do you belong in?",
+        "trait_name": "TV Style"
+        "emoji": "📺",
+        "questions": [
+            {
+                "text": "When watching movies, you prefer stories that:",
+                "options": [
+                    {"text": "Make you laugh and forget your worries",             "value": 1},
+                    {"text": "Make you feel deeply and think about life",            "value": 3},
+                    {"text": "Make you swoon and feel love",          "value": 5},
+                ],
+            },
+            {
+                "text": "In your friend group, you are:",
+                "options": [
+                    {"text": "The joker, always making people laugh",              "value": 1},
+                    {"text": "Thoughtful and reflective, giving advice when needed",             "value": 3},
+                    {"text": "Romantic and sentimental, always planning cute surprises",       "value": 5},
+                ],
+            },
+            {
+                "text": "You enjoy movies that make you:",
+                "options": [
+                    {"text": "Laugh out loud",         "value": 1},
+                    {"text": "Cry or feel emotionally connected",   "value": 3},
+                    {"text": "Feel warm and romantic inside",            "value": 5},
+                ],
+            },
+            {
+                "text": "Your ideal ending of a story:",
+                "options": [
+                    {"text": "Everyone laughs and things turn out funny",      "value": 1},
+                    {"text": "Bittersweet, leaving you thinking",       "value": 3},
+                    {"text": "Happily-ever-after with love prevailing",    "value": 5},
+                ],
+            },
+            {
+                "text": "When you make a wrong decision, you:",
+                "options": [
+                    {"text": "Laugh it off and look at the bright side",       "value": 1},
+                    {"text": "Make it a big thing and everyones problem",                  "value": 3},
+                    {"text": "Look for companion during your struggles",          "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 5,
+        "title": "How Creative Are You?",
+        "description": "Explore the creative side of your personality",
+        "trait_name": "Creativity Style",
+        "emoji": "🎨",
+        "questions": [
+            {
+                "text": "When facing a problem at work, you tend to:",
+                "options": [
+                    {"text": "Look for the most proven solution",                 "value": 1},
+                    {"text": "Tweak an existing approach to fit the situation",   "value": 3},
+                    {"text": "Come up with a completely original solution",       "value": 5},
+                ],
+            },
+            {
+                "text": "Your workspace is usually:",
+                "options": [
+                    {"text": "Clean, minimal, and well-organized",                "value": 1},
+                    {"text": "Organized with some personal touches",              "value": 3},
+                    {"text": "Covered in notes, sketches, and random ideas",      "value": 5},
+                ],
+            },
+            {
+                "text": "If you had to pick a hobby, you'd choose:",
+                "options": [
+                    {"text": "Puzzles, chess, or reading",                        "value": 1},
+                    {"text": "Cooking, gardening, or photography",                "value": 3},
+                    {"text": "Painting, writing fiction, or music",               "value": 5},
+                ],
+            },
+            {
+                "text": "When you daydream, you usually:",
+                "options": [
+                    {"text": "Rarely, you prefer to focus on the present",       "value": 1},
+                    {"text": "Think through future plans or scenarios",           "value": 3},
+                    {"text": "Lose yourself in fantasy worlds and wild ideas",    "value": 5},
+                ],
+            },
+            {
+                "text": "You'd rather:",
+                "options": [
+                    {"text": "Follow a clear recipe step by step",               "value": 1},
+                    {"text": "Use a recipe as inspiration and improvise",         "value": 3},
+                    {"text": "Throw things together and see what happens",        "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 6,
+        "title": "What's Your Empathy Style?",
+        "description": "Discover how deeply you tune in to others' emotions",
+        "trait_name": "Empathy Style",
+        "emoji": "❤️",
+        "questions": [
+            {
+                "text": "When a friend is upset, you first:",
+                "options": [
+                    {"text": "Try to help them solve what caused the problem",    "value": 1},
+                    {"text": "Acknowledge their feelings and offer advice",       "value": 3},
+                    {"text": "Just sit with them and let them feel heard",        "value": 5},
+                ],
+            },
+            {
+                "text": "Watching an emotional movie, you:",
+                "options": [
+                    {"text": "Stay pretty detached from the characters",          "value": 1},
+                    {"text": "Feel moved but keep your composure",                "value": 3},
+                    {"text": "Often tear up or feel deeply affected",             "value": 5},
+                ],
+            },
+            {
+                "text": "If a stranger seems sad in public, you:",
+                "options": [
+                    {"text": "Assume they're fine — it's not your place",        "value": 1},
+                    {"text": "Notice it but leave them be unless they reach out", "value": 3},
+                    {"text": "Feel compelled to ask if they're okay",             "value": 5},
+                ],
+            },
+            {
+                "text": "In an argument, you tend to:",
+                "options": [
+                    {"text": "Focus on facts and logic to resolve things",        "value": 1},
+                    {"text": "Address both the issue and the feelings involved",  "value": 3},
+                    {"text": "Prioritize how both people feel over who is right", "value": 5},
+                ],
+            },
+            {
+                "text": "You pick up on other people's moods:",
+                "options": [
+                    {"text": "Only when they're clearly expressed",               "value": 1},
+                    {"text": "Usually after some interaction",                    "value": 3},
+                    {"text": "Almost immediately when you walk into a room",      "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 7,
+        "title": "Are You a Natural Leader?",
+        "description": "Find out where you stand on the leadership spectrum",
+        "trait_name": "Leadership Style",
+        "emoji": "👑",
+        "questions": [
+            {
+                "text": "In a group with no clear direction, you:",
+                "options": [
+                    {"text": "Wait for someone else to take charge",              "value": 1},
+                    {"text": "Suggest ideas but let others lead",                 "value": 3},
+                    {"text": "Naturally step up and organize the group",          "value": 5},
+                ],
+            },
+            {
+                "text": "When a team project is going off track, you:",
+                "options": [
+                    {"text": "Hope someone else addresses it",                    "value": 1},
+                    {"text": "Raise your concern and help realign",               "value": 3},
+                    {"text": "Take ownership and redirect the team",              "value": 5},
+                ],
+            },
+            {
+                "text": "Your friends usually turn to you for:",
+                "options": [
+                    {"text": "Support and a listening ear",                       "value": 1},
+                    {"text": "Thoughtful advice and perspective",                 "value": 3},
+                    {"text": "Decisions and organizing plans",                    "value": 5},
+                ],
+            },
+            {
+                "text": "When learning something new, you prefer to:",
+                "options": [
+                    {"text": "Follow instructions carefully",                     "value": 1},
+                    {"text": "Learn the theory then adapt it yourself",           "value": 3},
+                    {"text": "Jump in and learn by doing",                        "value": 5},
+                ],
+            },
+            {
+                "text": "Your biggest motivator at work is:",
+                "options": [
+                    {"text": "Stability and doing your job well",                 "value": 1},
+                    {"text": "Growing your skills and impact",                    "value": 3},
+                    {"text": "Building something and inspiring others",           "value": 5},
+                ],
+            },
+        ],
+    },
+    {
+        "id": 8,
+        "title": "What animal do you relate to the most",
+        "description": "Which animal will align with you the most",
+        "trait_name": "Animal Style",
+        "emoji": "🐾",
+        "questions": [
+            {
+                "text": "How do you react in a new situation?",
+                "options": [
+                    {"text": "Turn it down, job security matters most",        "value": 1},
+                    {"text": "Take your time, observe, and act carefully",     "value": 3},
+                    {"text": "Approach confidently but cautiously",           "value": 5},
+                ],
+            },
+            {
+                "text": "At a social gathering, you are:",
+                "options": [
+                    {"text": "Outgoing, center of attention",       "value": 1},
+                    {"text": "Quiet, stick to a corner, and watch",   "value": 3},
+                    {"text": "Friendly, mingle with close friends",    "value": 5},
+                ],
+            },
+            {
+                "text": "On a hiking trip, you're most drawn to:",
+                "options": [
+                    {"text": "The unmarked trail only experienced hikers attempt",   "value": 1},
+                    {"text": "The well-marked scenic trail",                        "value": 3},
+                    {"text": "You freestyle it your own way",  "value": 5},
+                ],
+            },
+            {
+                "text": "When you fail at something, your first instinct is:",
+                "options": [
+                    {"text": "Avoid trying again to prevent future failure",      "value": 1},
+                    {"text": "Understand what went wrong and try a safer approach","value": 3},
+                    {"text": "Get back up even bigger,  failure is data",         "value": 5},
+                ],
+            },
+            {
+                "text": "Trying exotic food you've never heard of, you:",
+                "options": [
+                    {"text": "Stick to what you know you like",                   "value": 1},
+                    {"text": "Ask what's in it, then try a small bite",           "value": 3},
+                    {"text": "Order it immediately, the weirder the better",     "value": 5},
+                ],
+            },
+        ],
+    },
+]
+
+TRAIT_LABELS = {
+    "Energy Style":        ["Introvert",       "Ambivert",             "Extrovert"],
+    "Living Style":        ["City",               "Beach",               "Country"],
+    "Communication Style": ["Listener",        "Communicator",         "Expressive"],
+    "TV Style":            ["Comedy",           "Drama",                  "Romance"],
+    "Creativity Style":    ["Methodical",      "Creative Blend",  "Wildly Creative"],
+    "Empathy Style":       ["Logical",         "Empathetic",    "Highly Empathetic"],
+    "Leadership Style":    ["Supporter",       "Collaborator",     "Natural Leader"],
+    "Animal Style":        ["Lion",             "Mouse",                     "Bear"],
+}
+
+TRAIT_DESCS = {
+    "Energy Style":        [
+        "You recharge best in solitude your inner world is rich and deep.",
+        "You adapt your social energy to fit the moment perfectly.",
+        "You thrive on social energy, people fuel your fire.",
+    ],
+    "Living Style":      [
+        "You would fit best in a city",
+        "You would fit best in a beach",
+        "You would fit best in a country",
+    ],
+    "Communication Style": [
+        "You listen deeply and choose your words with care.",
+        "You strike the perfect balance between listening and speaking up.",
+        "You express yourself openly and energetically.",
+    ],
+    "Tv Style":      [
+        "A funny show where you can make constant jokes",
+        "A Drama where it is basically a constant soap opera going on",
+        "A passionate romance filled with love and adventure",
+    ],
+    "Creativity Style":    [
+        "You prefer tried-and-true methods that deliver consistent results.",
+        "You blend structure with creativity for original-yet-practical ideas.",
+        "Your imagination runs wild, you love thinking outside the box.",
+    ],
+    "Empathy Style":       [
+        "You lead with logic when others need support.",
+        "You naturally balance empathy with practical advice.",
+        "You feel others' emotions as if they were your own.",
+    ],
+    "Leadership Style":    [
+        "You excel at supporting others and contributing steadily.",
+        "You bring people together and bridge different perspectives.",
+        "You step up naturally and inspire others to follow.",
+    ],
+    "Animal Style":          [
+        "You are a lion; brave and fearless",
+        "You are a mouse; quiet and calculated",
+        "You are a bear; a hard exterior but and soft inside",
+    ],
+}
+
+# ── DATA PERSISTENCE ──────────────────────────────────────────────────────────
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return {"users": {}}
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def get_user(data, username):
+    return data["users"].get(username)
+
+def ensure_user(data, username):
+    if username not in data["users"]:
+        data["users"][username] = {
+            "username": username,
+            "display_name": username,
+            "bio": "",
+            "results": {},
+        }
+        save_data(data)
+    return data["users"][username]
+
+# ── SCORING ───────────────────────────────────────────────────────────────────
+def compute_trait_label(trait_name, score, max_score):
+    ratio = score / max_score if max_score else 0
+    labels = TRAIT_LABELS.get(trait_name, ["Low", "Medium", "High"])
+    if ratio < 0.38: return labels[0]
+    if ratio < 0.72: return labels[1]
+    return labels[2]
+
+def compute_trait_desc(trait_name, score, max_score):
+    ratio = score / max_score if max_score else 0
+    descs = TRAIT_DESCS.get(trait_name, ["", "", ""])
+    if ratio < 0.38: return descs[0]
+    if ratio < 0.72: return descs[1]
+    return descs[2]
+
+# ── INPUT HELPERS ─────────────────────────────────────────────────────────────
+def prompt_choice(options, label="Your choice"):
+    while True:
+        try:
+            raw = input(c(f"\n{label} [1-{len(options)}]: ", CYAN))
+            choice = int(raw.strip())
+            if 1 <= choice <= len(options):
+                return choice - 1
+            print(c(f"  Please enter a number between 1 and {len(options)}.", RED))
+        except (ValueError, KeyboardInterrupt):
+            print(c("  Invalid input.", RED))
+
+def prompt_text(label, min_len=1, max_len=80):
+    while True:
+        val = input(c(f"{label}: ", CYAN)).strip()
+        if min_len <= len(val) <= max_len:
+            return val
+        print(c(f"  Must be between {min_len} and {max_len} characters.", RED))
+
+# ── SCREENS ───────────────────────────────────────────────────────────────────
+def print_header():
+    clear()
+    print()
+    print(c("  ✨  QuizTraits", PURPLE + BOLD))
+    print(c("  Discover Your Personality Traits", DIM))
+    hr()
+
+def onboarding():
+    print_header()
+    print(f"\n  {bold('Welcome!')} Pick a username to get started.\n")
+    username = prompt_text("  Username (no spaces)", min_len=2, max_len=24)
+    username = username.replace(" ", "_")
+    data = load_data()
+    user = ensure_user(data, username)
+    print(c(f"\n  Welcome, {user['display_name']}! 🎉", GREEN))
+    time.sleep(1)
+    return username, data
+
+def login_or_register(data):
+    print_header()
+    print(f"\n  {bold('Enter your username')} to continue, or type a new one to register.\n")
+    username = prompt_text("  Username", min_len=2, max_len=24).replace(" ", "_")
+    user = ensure_user(data, username)
+    print(c(f"\n  Welcome back, {user['display_name']}! 👋", GREEN))
+    time.sleep(1)
+    return username
+
+def show_feed(data, username):
+    user = data["users"][username]
+    done = user["results"]
+    done_count = len(done)
+
+    print_header()
+    print(f"\n  {bold('All Quizzes')}  {dim(f'({done_count}/{len(QUIZZES)} traits earned)')}\n")
+
+    for i, q in enumerate(QUIZZES, 1):
+        result = done.get(str(q["id"]))
+        status = c(f"  ✓ {result['trait_label']}", GREEN) if result else c("  Not taken", DIM)
+        print(f"  {c(str(i) + '.', CYAN)} {q['emoji']}  {bold(q['title'])}")
+        print(f"     {dim(q['description'])}")
+        print(f"     {status}")
+        print()
+
+    hr()
+    print(f"\n  {c('P', CYAN)} View profile    {c('E', CYAN)} Edit profile    {c('Q', CYAN)} Quit\n")
+
+    while True:
+        raw = input(c("  Choose a quiz number or command: ", CYAN)).strip().lower()
+        if raw == "q":
+            return "quit"
+        if raw == "p":
+            return "profile"
+        if raw == "e":
+            return "edit"
+        try:
+            idx = int(raw) - 1
+            if 0 <= idx < len(QUIZZES):
+                return ("quiz", QUIZZES[idx])
+        except ValueError:
+            pass
+        print(c("  Invalid choice. Try again.", RED))
+
+def run_quiz(quiz, data, username):
+    user = data["users"][username]
+    answers = []
+
+    for i, question in enumerate(quiz["questions"]):
+        clear()
+        print()
+        print(c(f"  {quiz['emoji']}  {quiz['title']}", PURPLE + BOLD))
+        hr()
+        pct = int((i / len(quiz["questions"])) * 100)
+        bar = "█" * (pct // 5) + "░" * (20 - pct // 5)
+        print(f"  {c(bar, PURPLE)}  {dim(f'Question {i+1} of {len(quiz[\"questions\"])}')}\n")
+        print(f"  {bold(question['text'])}\n")
+
+        for j, opt in enumerate(question["options"], 1):
+            print(f"  {c(str(j) + '.', CYAN)}  {opt['text']}")
+
+        choice = prompt_choice(question["options"])
+        answers.append(question["options"][choice])
+
+    # compute score
+    score = sum(a["value"] for a in answers)
+    max_score = sum(max(o["value"] for o in q["options"]) for q in quiz["questions"])
+    trait_label = compute_trait_label(quiz["trait_name"], score, max_score)
+    trait_desc  = compute_trait_desc(quiz["trait_name"], score, max_score)
+
+    result = {
+        "quiz_id":     quiz["id"],
+        "quiz_title":  quiz["title"],
+        "trait_name":  quiz["trait_name"],
+        "trait_label": trait_label,
+        "emoji":       quiz["emoji"],
+        "score":       score,
+        "max_score":   max_score,
+    }
+    user["results"][str(quiz["id"])] = result
+    save_data(data)
+
+    show_result(result, trait_desc)
+
+def show_result(result, trait_desc=""):
+    clear()
+    print()
+    hr("═")
+    print(c(f"\n       🎉  Your Trait Result  🎉\n", YELLOW + BOLD))
+    hr("═")
+    print()
+    print(c(f"   {result['emoji']}  {result['trait_name']}", DIM))
+    print(c(f"   {result['trait_label']}", PURPLE + BOLD) + "  ← your trait")
+    print()
+    if trait_desc:
+        print(f"   {dim(trait_desc)}")
+    print()
+    score_pct = int(result["score"] / result["max_score"] * 100)
+    bar = "█" * (score_pct // 5) + "░" * (20 - score_pct // 5)
+    print(f"   Score: {c(bar, PURPLE)}  {score_pct}%")
+    print()
+    hr("═")
+    pause()
+
+def show_profile(data, username):
+    user = data["users"][username]
+    results = list(user["results"].values())
+
+    clear()
+    print()
+    print(c("  👤  Profile", BOLD))
+    hr()
+    print(f"\n  {bold(user['display_name'])}  {dim('@' + username)}")
+    if user["bio"]:
+        print(f"  {user['bio']}")
+    print()
+    print(c(f"  Trait Badges ({len(results)} earned)\n", BOLD))
+
+    if not results:
+        print(c("  No traits earned yet. Take a quiz!\n", DIM))
+    else:
+        for r in results:
+            bar_val = int(r["score"] / r["max_score"] * 20)
+            bar = "█" * bar_val + "░" * (20 - bar_val)
+            print(f"  {r['emoji']}  {c(r['trait_label'], PURPLE + BOLD)}  {dim('·')}  {dim(r['trait_name'])}")
+            print(f"     {c(bar, PURPLE)}  {dim(str(int(r[\"score\"]/r[\"max_score\"]*100)) + '%')}")
+            print()
+
+    hr()
+    pause()
+
+def edit_profile(data, username):
+    user = data["users"][username]
+
+    clear()
+    print()
+    print(c("  ✏️  Edit Profile", BOLD))
+    hr()
+    print(f"  Current display name: {bold(user['display_name'])}")
+    print(f"  Current bio:          {dim(user['bio'] or '(none)')}\n")
+
+    new_name = input(c(f"  New display name (leave blank to keep): ", CYAN)).strip()
+    new_bio  = input(c(f"  New bio (leave blank to keep):          ", CYAN)).strip()
+
+    if new_name:
+        user["display_name"] = new_name[:40]
+    if new_bio:
+        user["bio"] = new_bio[:160]
+
+    save_data(data)
+    print(c("\n  Profile updated! ✓", GREEN))
+    time.sleep(1)
+
+# ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+def main():
+    data = load_data()
+
+    if not data["users"]:
+        username, data = onboarding()
+    else:
+        username = login_or_register(data)
+
+    while True:
+        action = show_feed(data, username)
+
+        if action == "quit":
+            clear()
+            print(c("\n  Thanks for using QuizTraits! Goodbye 👋\n", PURPLE + BOLD))
+            sys.exit(0)
+        elif action == "profile":
+            show_profile(data, username)
+        elif action == "edit":
+            edit_profile(data, username)
+        elif isinstance(action, tuple) and action[0] == "quiz":
+            quiz = action[1]
+            already_done = str(quiz["id"]) in data["users"][username]["results"]
+            if already_done:
+                print(c(f"\n  You've already completed this quiz. Retake it? (y/n): ", CYAN), end="")
+                if input().strip().lower() != "y":
+                    continue
+            run_quiz(quiz, data, username)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(c("\n\n  Goodbye! 👋\n", PURPLE + BOLD))
+        sys.exit(0)
